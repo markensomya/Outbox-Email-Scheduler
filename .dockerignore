@@ -1,0 +1,43 @@
+# Dependencies
+node_modules
+*/node_modules
+**/node_modules
+
+# Build output
+dist
+*/dist
+**/dist
+
+# Environment files (secrets)
+.env
+*/.env
+**/.env
+.env.local
+*/.env.local
+
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Docker
+docker-compose.yml
+docker-compose.prod.yml
+
+# Documentation
+README.md
+*.md
+
+# Prisma migrations (we use db push, not migrations)
+*/prisma/migrations
