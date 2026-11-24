@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import passport from "passport";
 import { issueJwt } from "../auth/google";
-import { getAuthUser } from "../auth/middleware";
+import { getAuthUser, authMiddleware } from "../auth/middleware";
 import { prisma } from "../db/prisma";
 import { env } from "../config/env";
 import { logger } from "../utils/logger";
@@ -60,12 +60,9 @@ router.get(
 /**
  * GET /api/auth/me
  * Returns the currently authenticated user's profile.
+ * Uses authMiddleware so it works with both cookie and Bearer token.
  */
-router.get("/me", (req: Request, res: Response) => {
-  if (!req.user) {
-    res.status(401).json({ error: "Not authenticated" });
-    return;
-  }
+router.get("/me", authMiddleware, (req: Request, res: Response) => {
   const user = getAuthUser(req);
   res.json({
     user: {
