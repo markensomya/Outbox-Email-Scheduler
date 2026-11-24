@@ -28,7 +28,7 @@ router.get(
     res.cookie("session", token, {
       httpOnly: true,
       secure: env.nodeEnv === "production",
-      sameSite: env.nodeEnv === "production" ? "none" : "lax",
+      sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -90,7 +90,7 @@ router.post("/demo", async (_req: Request, res: Response) => {
     res.cookie("session", token, {
       httpOnly: true,
       secure: env.nodeEnv === "production",
-      sameSite: env.nodeEnv === "production" ? "none" : "lax",
+      sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 

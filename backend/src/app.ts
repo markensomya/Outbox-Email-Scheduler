@@ -38,7 +38,7 @@ export function createApp(): express.Application {
       cookie: {
         httpOnly: true,
         secure: env.nodeEnv === "production",
-        sameSite: env.nodeEnv === "production" ? "none" : "lax",
+        sameSite: "lax",
       },
     }),
   );
