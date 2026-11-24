@@ -35,11 +35,11 @@ RUN npx prisma generate
 RUN npx tsc
 
 
-# ── Stage 3: Production runtime ──────────────────────────────
-FROM node:20-alpine AS runtime
+# ── Stage 3: Production runtime (Debian-based for Prisma SSL compat) ───
+FROM node:20-slim AS runtime
 
 # Install necessary tools
-RUN apk add --no-cache curl
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
