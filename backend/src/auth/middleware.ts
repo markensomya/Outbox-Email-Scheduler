@@ -2,20 +2,18 @@ import { Request, Response, NextFunction } from "express";
 import { prisma } from "../db/prisma";
 import { verifyJwt } from "./google";
 
-// Extend Express Request to include the authenticated user.
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace Express {
-    interface Request {
-      user?: {
-        id: string;
-        googleId: string;
-        name: string;
-        email: string;
-        avatarUrl: string | null;
-      };
-    }
-  }
+/** Type for the authenticated user attached to the request. */
+export interface AuthUser {
+  id: string;
+  googleId: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+}
+
+/** Extract the authenticated user from a request (type-safe). */
+export function getAuthUser(req: Request): AuthUser {
+  return req.user as unknown as AuthUser;
 }
 
 /**
@@ -51,7 +49,7 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
     return;
   }
 
-  req.user = {
+  (req as unknown as { user: AuthUser }).user = {
     id: user.id,
     googleId: user.googleId,
     name: user.name,

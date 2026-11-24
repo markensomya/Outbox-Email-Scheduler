@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import passport from "passport";
 import { issueJwt } from "../auth/google";
+import { getAuthUser } from "../auth/middleware";
 import { env } from "../config/env";
 
 const router = Router();
@@ -20,7 +21,7 @@ router.get(
   "/google/callback",
   passport.authenticate("google", { failureRedirect: `${env.clientUrl}/login` }),
   (req: Request, res: Response) => {
-    const user = req.user as { id: string };
+    const user = getAuthUser(req);
     const token = issueJwt(user.id);
 
     res.cookie("session", token, {
@@ -43,12 +44,13 @@ router.get("/me", (req: Request, res: Response) => {
     res.status(401).json({ error: "Not authenticated" });
     return;
   }
+  const user = getAuthUser(req);
   res.json({
     user: {
-      id: req.user.id,
-      name: req.user.name,
-      email: req.user.email,
-      avatarUrl: req.user.avatarUrl,
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatarUrl: user.avatarUrl,
     },
   });
 });

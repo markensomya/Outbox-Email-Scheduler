@@ -63,7 +63,8 @@ export function configureGoogleAuth(): void {
 /** Issue a signed JWT for an authenticated user. */
 export function issueJwt(userId: string): string {
   return jwt.sign({ sub: userId }, env.jwtSecret, {
-    expiresIn: env.jwtExpiresIn,
+    // Cast to work around @types/jsonwebtoken v9 strict StringValue type
+    expiresIn: env.jwtExpiresIn as unknown as jwt.SignOptions["expiresIn"],
   });
 }
 

@@ -1,5 +1,5 @@
 import express from "express";
-import { createBullBoard } from "@bull-board/express";
+import { createBullBoard } from "@bull-board/api";
 import { ExpressAdapter } from "@bull-board/express";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { emailQueue } from "./emailQueue";
@@ -13,7 +13,8 @@ export function mountBullBoard(app: express.Application): void {
   serverAdapter.setBasePath("/admin/queues");
 
   createBullBoard({
-    queues: [new BullMQAdapter(emailQueue)],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    queues: [new BullMQAdapter(emailQueue) as any],
     serverAdapter,
   });
 

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { searchEmails } from "../services/elasticService";
-import { authMiddleware } from "../auth/middleware";
+import { authMiddleware, getAuthUser } from "../auth/middleware";
 
 const router = Router();
 
@@ -16,7 +16,7 @@ router.get("/", authMiddleware, async (req: Request, res: Response) => {
     const results = await searchEmails({
       query,
       status,
-      userId: req.user!.id,
+      userId: getAuthUser(req).id,
     });
 
     res.json({ results, total: results.length });

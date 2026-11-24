@@ -6,7 +6,7 @@ import {
   disconnectSlack,
   getSlackIntegration,
 } from "../services/slackService";
-import { authMiddleware } from "../auth/middleware";
+import { authMiddleware, getAuthUser } from "../auth/middleware";
 import { env } from "../config/env";
 
 const router = Router();
@@ -19,7 +19,7 @@ const router = Router();
 router.get("/auth", authMiddleware, (req: Request, res: Response) => {
   // State ties the callback to the authenticated user so we know whose
   // integration to store. We encode the userId in the state.
-  const state = `${req.user!.id}:${randomUUID()}`;
+  const state = `${getAuthUser(req).id}:${randomUUID()}`;
   const authUrl = buildSlackAuthUrl(state);
 
   // Store state briefly in a cookie for validation on callback.
@@ -82,7 +82,7 @@ router.get("/callback", async (req: Request, res: Response) => {
  * Returns whether the user has a Slack integration connected.
  */
 router.get("/status", authMiddleware, async (req: Request, res: Response) => {
-  const integration = await getSlackIntegration(req.user!.id);
+  const integration = await getSlackIntegration(getAuthUser(req).id);
   res.json({
     connected: !!integration,
     channelName: integration?.channelName || null,
@@ -96,7 +96,7 @@ router.get("/status", authMiddleware, async (req: Request, res: Response) => {
  */
 router.post("/disconnect", authMiddleware, async (req: Request, res: Response) => {
   try {
-    await disconnectSlack(req.user!.id);
+    await disconnectSlack(getAuthUser(req).id);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });

@@ -5,7 +5,7 @@ import {
   getEmailsByStatus,
   getEmailCounts,
 } from "../services/emailService";
-import { authMiddleware } from "../auth/middleware";
+import { authMiddleware, getAuthUser } from "../auth/middleware";
 import { getSenderList } from "../utils/ethereal";
 
 const router = Router();
@@ -69,7 +69,7 @@ router.post("/schedule", async (req: Request, res: Response) => {
     }
 
     const result = await scheduleEmails({
-      userId: req.user!.id,
+      userId: getAuthUser(req).id,
       senderEmail,
       recipients,
       subject,
@@ -97,7 +97,7 @@ router.get("/", async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 50;
 
-    const result = await getEmailsByStatus(req.user!.id, status, page, limit);
+    const result = await getEmailsByStatus(getAuthUser(req).id, status, page, limit);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
@@ -110,7 +110,7 @@ router.get("/", async (req: Request, res: Response) => {
  */
 router.get("/counts", async (req: Request, res: Response) => {
   try {
-    const counts = await getEmailCounts(req.user!.id);
+    const counts = await getEmailCounts(getAuthUser(req).id);
     res.json(counts);
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });

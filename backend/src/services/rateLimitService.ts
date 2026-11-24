@@ -122,9 +122,9 @@ let delayScriptSha: string | null = null;
 
 async function getDelayScriptSha(): Promise<string> {
   if (delayScriptSha) return delayScriptSha;
-  const sha = await rateLimitRedis.script("LOAD", MIN_DELAY_SCRIPT);
-  delayScriptSha = typeof sha === "string" ? sha : sha.toString();
-  return delayScriptSha;
+  const sha = (await rateLimitRedis.script("LOAD", MIN_DELAY_SCRIPT)) as string;
+  delayScriptSha = sha;
+  return sha;
 }
 
 const SENDER_LAST_SENT_PREFIX = "sender:last_sent:";
@@ -143,11 +143,11 @@ export async function acquireMinDelayLock(senderEmail: string, minDelayMs: numbe
     const sha = await getDelayScriptSha();
     const result = await rateLimitRedis.evalsha(sha, 1, key, now, minDelayMs);
     return result === 1;
-  } catch (err: unknown) {
+  } catch {
     // If the script was flushed (NOSCRIPT), reload and retry.
     delayScriptSha = null;
-    const sha = await rateLimitRedis.script("LOAD", MIN_DELAY_SCRIPT);
-    delayScriptSha = sha as string;
+    const sha = (await rateLimitRedis.script("LOAD", MIN_DELAY_SCRIPT)) as string;
+    delayScriptSha = sha;
     const result = await rateLimitRedis.evalsha(sha, 1, key, now, minDelayMs);
     return result === 1;
   }
