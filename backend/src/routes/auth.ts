@@ -1,9 +1,10 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import passport from "passport";
 import { issueJwt } from "../auth/google";
 import { getAuthUser } from "../auth/middleware";
 import { prisma } from "../db/prisma";
 import { env } from "../config/env";
+import { logger } from "../utils/logger";
 
 const router = Router();
 
@@ -11,7 +12,10 @@ const router = Router();
  * GET /api/auth/google
  * Redirects to Google OAuth consent screen.
  */
-router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+router.get("/google", (req: Request, res: Response, next: NextFunction) => {
+  logger.info("[oauth] Starting Google OAuth flow");
+  passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
+});
 
 /**
  * GET /api/auth/google/callback
@@ -20,19 +24,35 @@ router.get("/google", passport.authenticate("google", { scope: ["profile", "emai
  */
 router.get(
   "/google/callback",
-  passport.authenticate("google", { failureRedirect: `${env.clientUrl}/login` }),
-  (req: Request, res: Response) => {
-    const user = getAuthUser(req);
-    const token = issueJwt(user.id);
-
-    res.cookie("session", token, {
-      httpOnly: true,
-      secure: env.nodeEnv === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  (req: Request, res: Response, next: NextFunction) => {
+    logger.info("[oauth] Callback received", {
+      code: req.query.code ? "present" : "missing",
+      state: req.query.state ? "present" : "missing",
+      error: (req.query.error as string) || "none",
+      hasSession: !!req.session,
     });
+    passport.authenticate("google", (err: Error | null, user: unknown) => {
+      if (err) {
+        logger.error("[oauth] Passport error:", { message: err.message });
+        return res.redirect(`${env.clientUrl}/?oauth_error=${encodeURIComponent(err.message)}`);
+      }
+      if (!user) {
+        logger.error("[oauth] No user returned from Passport");
+        return res.redirect(`${env.clientUrl}/?oauth_error=auth_failed`);
+      }
+      const authUser = user as { id: string };
+      logger.info("[oauth] Success, user:", { id: authUser.id });
+      const token = issueJwt(authUser.id);
 
-    res.redirect(`${env.clientUrl}/dashboard`);
+      res.cookie("session", token, {
+        httpOnly: true,
+        secure: env.nodeEnv === "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      res.redirect(`${env.clientUrl}/dashboard`);
+    })(req, res, next);
   },
 );
 
