@@ -51,7 +51,8 @@ router.get(
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
-      res.redirect(`${env.clientUrl}/dashboard`);
+      // Pass token via URL as fallback — some browsers block cookies in 302 redirects
+      res.redirect(`${env.clientUrl}/?token=${token}`);
     })(req, res, next);
   },
 );
@@ -121,6 +122,7 @@ router.post("/demo", async (_req: Request, res: Response) => {
         email: demoUser.email,
         avatarUrl: demoUser.avatarUrl,
       },
+      token,
     });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });

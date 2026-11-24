@@ -1,6 +1,8 @@
 /**
  * API client for the Outbox backend.
  * Uses cookie-based auth (credentials: include) for all requests.
+ * Also supports localStorage token as fallback (for OAuth redirect where
+ * cookies may be blocked by the browser).
  *
  * In development: set VITE_API_URL=http://localhost:4000 in frontend/.env
  * In production: leave VITE_API_URL unset so it defaults to the same origin
@@ -11,11 +13,33 @@ const API_URL =
   (import.meta.env.VITE_API_URL as string) ||
   (typeof window !== "undefined" ? window.location.origin : "http://localhost:4000");
 
+/** Get auth token from localStorage (set by OAuth callback or demo login). */
+function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("auth_token");
+}
+
+/** Store auth token in localStorage. */
+export function setAuthToken(token: string): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("auth_token", token);
+  }
+}
+
+/** Clear auth token from localStorage. */
+export function clearAuthToken(): void {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("auth_token");
+  }
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = getAuthToken();
   const response = await fetch(`${API_URL}${path}`, {
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options?.headers || {}),
     },
     ...options,
@@ -86,8 +110,12 @@ export interface SlackStatus {
 export const api = {
   auth: {
     me: () => request<{ user: User }>("/api/auth/me"),
-    logout: () => request<{ success: boolean }>("/api/auth/logout", { method: "POST" }),
-    demoLogin: () => request<{ user: User }>("/api/auth/demo", { method: "POST" }),
+    logout: () => { clearAuthToken(); return request<{ success: boolean }>("/api/auth/logout", { method: "POST" }); },
+    demoLogin: async () => {
+      const result = await request<{ user: User; token: string }>("/api/auth/demo", { method: "POST" });
+      setAuthToken(result.token);
+      return result;
+    },
   },
 
   emails: {

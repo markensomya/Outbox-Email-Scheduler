@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { api, type User, type SlackStatus } from "../api/client";
+import { api, setAuthToken, clearAuthToken, type User, type SlackStatus } from "../api/client";
 
 interface AuthContextType {
   user: User | null;
@@ -18,6 +18,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
+      // Check for OAuth callback token in the URL (passed by the backend
+      // as a fallback when cookies are blocked during 302 redirects).
+      const params = new URLSearchParams(window.location.search);
+      const urlToken = params.get("token");
+      if (urlToken) {
+        setAuthToken(urlToken);
+        // Clean the URL — remove the token parameter
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+
       try {
         const data = await api.auth.me();
         setUser(data.user);
@@ -38,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await api.auth.logout();
+    clearAuthToken();
     setUser(null);
     setSlackStatus(null);
   };
