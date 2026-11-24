@@ -42,7 +42,7 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
   // sends even if BullMQ redelivers the job (e.g., after a crash).
   const updated = await prisma.$queryRaw<
     Array<{ id: string }>
-  >`UPDATE emails SET status = 'PROCESSING', "updatedAt" = NOW() WHERE id = ${emailId} AND status = 'SCHEDULED' RETURNING id`;
+  >`UPDATE "Email" SET status = 'PROCESSING', "updatedAt" = NOW() WHERE id = ${emailId} AND status = 'SCHEDULED' RETURNING id`;
 
   if (updated.length === 0) {
     // Either already sent, already processing, or doesn't exist. Skip safely.
