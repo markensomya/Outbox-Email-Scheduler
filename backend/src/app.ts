@@ -52,6 +52,30 @@ export function createApp(): express.Application {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // ── SMTP port diagnostic (remove after debugging) ──
+  app.get("/api/admin/smtp-test", async (_req, res) => {
+    const net = await import("net");
+    const ports = [587, 465, 25, 2525];
+    const results: Record<string, boolean> = {};
+    await Promise.all(
+      ports.map(
+        (port) =>
+          new Promise<void>((resolve) => {
+            const sock = new net.Socket();
+            sock.setTimeout(5000);
+            sock.connect(port, "smtp.ethereal.email", () => {
+              sock.destroy();
+              results[`smtp.ethereal.email:${port}`] = true;
+              resolve();
+            });
+            sock.on("error", () => { sock.destroy(); results[`smtp.ethereal.email:${port}`] = false; resolve(); });
+            sock.on("timeout", () => { sock.destroy(); results[`smtp.ethereal.email:${port}`] = false; resolve(); });
+          }),
+      ),
+    );
+    res.json(results);
+  });
+
   app.use("/api/auth", authRoutes);
   // Mount search routes BEFORE email routes to avoid the /api/emails
   // catch-all router intercepting /api/emails/search.
