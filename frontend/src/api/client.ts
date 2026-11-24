@@ -87,6 +87,7 @@ export const api = {
   auth: {
     me: () => request<{ user: User }>("/api/auth/me"),
     logout: () => request<{ success: boolean }>("/api/auth/logout", { method: "POST" }),
+    demoLogin: () => request<{ user: User }>("/api/auth/demo", { method: "POST" }),
   },
 
   emails: {

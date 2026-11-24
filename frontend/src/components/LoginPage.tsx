@@ -1,7 +1,21 @@
-import { Mail } from "lucide-react";
-import { API_URL } from "../api/client";
+import { useState } from "react";
+import { Mail, Loader2, Sparkles } from "lucide-react";
+import { API_URL, api } from "../api/client";
 
 export default function LoginPage() {
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  const handleDemoLogin = async () => {
+    setDemoLoading(true);
+    try {
+      await api.auth.demoLogin();
+      window.location.reload();
+    } catch {
+      setDemoLoading(false);
+      alert("Demo login failed. Please try again.");
+    }
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-50 via-white to-purple-50">
       <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-8 shadow-xl">
@@ -57,6 +71,27 @@ export default function LoginPage() {
           </svg>
           Sign in with Google
         </a>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-gray-200" />
+          <span className="text-xs text-gray-400">or</span>
+          <div className="h-px flex-1 bg-gray-200" />
+        </div>
+
+        {/* Demo Login */}
+        <button
+          onClick={handleDemoLogin}
+          disabled={demoLoading}
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:opacity-50"
+        >
+          {demoLoading ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : (
+            <Sparkles size={18} />
+          )}
+          {demoLoading ? "Logging in..." : "Try Demo (No Google OAuth needed)"}
+        </button>
 
         <p className="text-center text-xs text-gray-400">
           By signing in, you agree to use this service for testing purposes only.

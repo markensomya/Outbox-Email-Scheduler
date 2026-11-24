@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import passport from "passport";
 import { issueJwt } from "../auth/google";
 import { getAuthUser } from "../auth/middleware";
+import { prisma } from "../db/prisma";
 import { env } from "../config/env";
 
 const router = Router();
@@ -63,6 +64,47 @@ router.post("/logout", (req: Request, res: Response) => {
   res.clearCookie("session");
   req.logout(() => {});
   res.json({ success: true });
+});
+
+/**
+ * POST /api/auth/demo
+ * Demo login that creates a test user and issues a JWT — no Google OAuth needed.
+ * Lets you explore the dashboard immediately. Replace with real Google OAuth
+ * for production use.
+ */
+router.post("/demo", async (_req: Request, res: Response) => {
+  try {
+    const demoUser = await prisma.user.upsert({
+      where: { googleId: "demo-user" },
+      create: {
+        googleId: "demo-user",
+        name: "Demo User",
+        email: "demo@outbox.local",
+        avatarUrl: null,
+      },
+      update: {},
+    });
+
+    const token = issueJwt(demoUser.id);
+
+    res.cookie("session", token, {
+      httpOnly: true,
+      secure: env.nodeEnv === "production",
+      sameSite: env.nodeEnv === "production" ? "none" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.json({
+      user: {
+        id: demoUser.id,
+        name: demoUser.name,
+        email: demoUser.email,
+        avatarUrl: demoUser.avatarUrl,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
 });
 
 export default router;
