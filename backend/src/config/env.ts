@@ -70,6 +70,9 @@ export const env = {
 
   etherealAccounts: parseEtherealAccounts(),
 
+  resendApiKey: process.env.RESEND_API_KEY || "",
+  resendFromEmail: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
+
   workerConcurrency: num("WORKER_CONCURRENCY", 5),
   minDelayBetweenEmailsMs: num("MIN_DELAY_BETWEEN_EMAILS_MS", 2000),
   maxEmailsPerHourPerSender: num("MAX_EMAILS_PER_HOUR_PER_SENDER", 100),

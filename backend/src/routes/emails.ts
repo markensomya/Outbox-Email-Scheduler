@@ -6,7 +6,7 @@ import {
   getEmailCounts,
 } from "../services/emailService";
 import { authMiddleware, getAuthUser } from "../auth/middleware";
-import { getSenderList } from "../utils/ethereal";
+import { env } from "../config/env";
 
 const router = Router();
 
@@ -15,10 +15,19 @@ router.use(authMiddleware);
 
 /**
  * GET /api/emails/senders
- * Returns the list of configured Ethereal sender accounts for the compose selector.
+ * Returns the list of configured sender accounts for the compose selector.
+ * Uses Resend's from address (HTTP API, not SMTP).
  */
 router.get("/senders", (_req: Request, res: Response) => {
-  res.json({ senders: getSenderList() });
+  const fromEmail = env.resendFromEmail || "onboarding@resend.dev";
+  res.json({
+    senders: [
+      {
+        email: fromEmail,
+        smtpUser: fromEmail,
+      },
+    ],
+  });
 });
 
 /**

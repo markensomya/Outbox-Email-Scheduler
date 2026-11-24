@@ -2,7 +2,6 @@ import { createApp } from "./app";
 import { env } from "./config/env";
 import { prisma } from "./db/prisma";
 import { ensureElasticsearchIndex } from "./config/elastic";
-import { validateEtherealConfig } from "./utils/ethereal";
 import { startEmailWorker } from "./queues/worker";
 import { reconcileOnStartup } from "./services/reconciliationService";
 import { logger } from "./utils/logger";
@@ -20,7 +19,11 @@ import { logger } from "./utils/logger";
 async function main(): Promise<void> {
   logger.info("[server] Starting Outbox Email Scheduler...");
 
-  validateEtherealConfig();
+  if (env.resendApiKey) {
+    logger.info(`[server] Resend email API configured (from: ${env.resendFromEmail})`);
+  } else {
+    logger.warn("[server] RESEND_API_KEY not set — emails will fail to send. Get a free key at https://resend.com");
+  }
 
   // Ensure Elasticsearch index exists (non-blocking on failure).
   await ensureElasticsearchIndex();

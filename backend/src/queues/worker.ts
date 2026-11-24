@@ -1,5 +1,5 @@
 import { Worker, type Job } from "bullmq";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { redis } from "../config/redis";
 import { prisma } from "../db/prisma";
 import { EMAIL_QUEUE_NAME, type EmailJobData } from "./emailQueue";
@@ -13,7 +13,44 @@ import {
 } from "../services/rateLimitService";
 import { sendRateLimitAlert } from "../services/slackService";
 import { indexEmail } from "../services/elasticService";
-import { createTransporter, findSender } from "../utils/ethereal";
+import { getSenderList } from "../utils/ethereal";
+
+// Resend client — HTTP API, works from any cloud host (no SMTP port needed).
+const resend = new Resend(env.resendApiKey || "re_placeholder");
+
+/**
+ * Send an email via Resend HTTP API.
+ * Falls back to a mock send (logs only) if no API key is configured,
+ * so the full scheduling/worker pipeline is exercisable in demo mode.
+ */
+async function sendEmail(params: {
+  from: string;
+  to: string;
+  subject: string;
+  body: string;
+}): Promise<{ id: string; previewUrl: string }> {
+  if (!env.resendApiKey) {
+    // Demo mode: simulate a successful send without hitting any external API.
+    const mockId = `mock_${Date.now()}`;
+    logger.info(`[worker] DEMO MODE: Simulated send to ${params.to} (no RESEND_API_KEY set)`);
+    return { id: mockId, previewUrl: `https://resend.com/emails/${mockId}` };
+  }
+
+  const result = await resend.emails.send({
+    from: params.from,
+    to: [params.to],
+    subject: params.subject,
+    text: params.body,
+    html: params.body.replace(/\n/g, "<br>\n"),
+  });
+
+  if (result.error) {
+    throw new Error(`Resend API error: ${result.error.message}`);
+  }
+
+  const id = result.data?.id || "unknown";
+  return { id, previewUrl: `https://resend.com/emails/${id}` };
+}
 
 /**
  * BullMQ worker that processes scheduled email jobs.
@@ -112,24 +149,16 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
     return;
   }
 
-  // ── Step 4: Send the email via Nodemailer (Ethereal) ──────────────────
-  const senderConfig = findSender(senderEmail);
-  if (!senderConfig) {
-    throw new Error(`No SMTP configuration found for sender ${senderEmail}`);
-  }
-
-  const transporter = createTransporter(senderConfig);
+  // ── Step 4: Send the email via Resend HTTP API ────────────────────────
+  const fromAddress = env.resendFromEmail || "onboarding@resend.dev";
 
   try {
-    const info = await transporter.sendMail({
-      from: `"Outbox Scheduler" <${senderEmail}>`,
+    const { id: emailMsgId, previewUrl } = await sendEmail({
+      from: `Outbox Scheduler <${fromAddress}>`,
       to: recipientEmail,
       subject,
-      text: body,
-      html: body.replace(/\n/g, "<br>\n"),
+      body,
     });
-
-    const previewUrl = nodemailer.getTestMessageUrl(info) as string | null;
 
     // ── Step 5: Mark as SENT ───────────────────────────────────────────
     const sentEmail = await prisma.email.update({
@@ -137,7 +166,7 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
       data: {
         status: "SENT",
         sentAt: new Date(),
-        etherealPreviewUrl: previewUrl || null,
+        etherealPreviewUrl: previewUrl,
       },
     });
 
@@ -145,7 +174,7 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
     void indexEmail(sentEmail);
 
     logger.info(
-      `[worker] Email ${emailId} sent to ${recipientEmail} (preview: ${previewUrl || "n/a"})`,
+      `[worker] Email ${emailId} sent to ${recipientEmail} via Resend (id: ${emailMsgId})`,
     );
   } catch (sendErr) {
     // Sending failed — roll back to SCHEDULED so the retry's idempotency
